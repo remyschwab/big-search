@@ -45,33 +45,45 @@ It is deliberately designed to expose some of Python's most interesting quirks a
 Since the problem permits both very simple and very complex solutions and your creativity is encouraged.
 Here is one breakdown of the problem from which you may want to pick an strategy depending on time constraints, interest, and ability level.
 
-### Novice Solution
+### Hints
 
-1. Don't preprocess or index the text, eliminating the need to implement an indexer.
+1. First solve the problem with a slow and simple searcher for one record
+   and without preprocessing.
 1. Solve only for k = 0, one relatively long p, and a single member string of the text (good if you're stuck and for checking).
 1. Assume the text and pattern are restricted to the four letter alphabet 'ACGT'
-1. Use only a single thread/process.
 1. Don't consider insertions, deletions, gaps, or wildcard patterns (simplifies from O(len(P)^2*len(T)) to O(len(P)*log(len(T)))).
 1. Search the text using built in library functions (find, re.match).
-1. Only search the forward strand of the double stranded DNA
+1. For a given k, a substring of the text of length r must match the pattern exactly, where = (len(P)/(k+1)).
 
-### Intermediate Solution
 
-1. Preprocess the text into an in-memory index of the text such as an inverted index (n-gram/k-mer index) or constructed out of built-in Python structures, numpy arrays, or third-party libraries
-2. Load the whole index in RAM and store it to disk using numpy or pickle between runs.
-3. Compute, index, and store the reverse strand of the DNA sequences
+### Example Strategy 1
+1. Pre-process the text into an inverted index (keyword, n-gram, k-mer index) constructed out of built-in Python structures, numpy arrays, or third-party libraries
+1. Process both the forward and reverse strands of the text, but write the "postings list" to disk, using one file per word.
 4. Use a "seed and extend" search strategy: find an exactly matching subsequence of the pattern and then extend it
-5. Use multiprocessing to process multiple seed matches in parallel
-NB: This is similar to to how Elastic Search and Google work. Its very fast, but very memory intensive. Work well for small values of k and len(P).
+1. For each chuck of the pattern, load the relevant posting list as the seeds. Numpy arrays may be helpful here.
+1. For each seed, slice out the relevant chunk of the text and see if the rest matches.
+5. Use multiprocessing to process multiple seed matches in parallel.
+NB: This is similar to to how Elastic Search and Google work. Its very fast, but very memory intensive if the postings lists are stored in RAM. Work well for small values of k and len(P).
 
-OR
+### Example Strategy 2
+1. Use a fast implementation of an index-free string search algorithm  KMP, RK, or Smith-Waterman
+1. Memory map the text file
+1. Use multiprocessing to search each DNA strand in parallel
+1. Merge the results together.
+NB: This approach is used by cli tools like [the silver searcher](https://github.com/ggreer/the_silver_searcher) which takes a few seconds. Work in production for large values of k.
 
-1. Use a fast implementation of KMP, RK, or Smith-Waterman
-2. Memory map the text file
-3. Use multiprocessing to search each DNA strand in parallel
-NB: this approach is used by cli tools like [the silver searcher](https://github.com/ggreer/the_silver_searcher) which takes a few seconds. Work in production for large values of k.
+### Example Strategy 3
+1. Enumerate the suffices of the Text as a set of (record.id, sequence_offset) tuples. Numpy record arrays are helpful here.
+1. Use the numpy sort routines to sort these suffices lexographically to make a suffix array (or use a 3rd party library).
+1. Initalize a list of match tuples marking the interval of the suffix array that correspond to matching segments of the array and the total number of mismatches.
+1. For each character in the pattern, for each candidate match interval, perform a binary search to find the intervals which contain the next matching character.
+1. Alternatively increment the mismatch counter for the candidate match..
+1. Remove candidate matches that exceed k mismatches.
+1. Stop when the pattern is fully traversed or when no candidate matches remain.
+NB: This is the standard binary search method for a suffix array and example code is easily found online. The key idea here is to use numpy instead of built in Python lists to reduce the memory footprint.
 
-### Advanced Solution
+
+### Advanced Suggestions
 1. Consider a high-performance index data-structure such as a suffix array, FM-index, or efficient key-value store.
 1. Consider impact of time spent writing results to output, OS level IO caching, and converting data types.
 1. Consider start up time spent loading the text and index vs. run-time spent finding and reporting results
@@ -79,6 +91,7 @@ NB: this approach is used by cli tools like [the silver searcher](https://github
 1. Consider the non-random, highly-repetitive nature of the pattern and text, alternative encodings, and compression opportunities.
 1. Consider a 2bit binary encoding: A => 00, C => 01, G => 10, T => 11 and use of bitwise operations for comparison
 1. Does the performance vary for different values of k and P?
+
 
 ## Evaluation Criteria
 In evaluating solutions the following criteria will be considered in order of importance:
@@ -107,4 +120,5 @@ In evaluating solutions the following criteria will be considered in order of im
 Human reference genome:
 ftp://ftp.ensembl.org/pub/release-81/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
 
+Example output for two sequences in .sam format (generated using bowtie aligner).
 
