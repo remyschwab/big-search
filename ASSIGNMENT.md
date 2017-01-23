@@ -23,10 +23,10 @@ along with our own work on large genomic datasets.
 Your objective is to solve the k-mismatch problem in CPython and prepare a 30 min talk on your solution.
 A formal statement of the k-mismatch problem problem is:
 
-"""
+```
 Given a set of strings selected from the alphabet ACGT which together form a Text, T, and a query string, P, find *all* occurrences of P
  in T (substrings of T) with up to k mismatches.
-"""
+```
 
 In this case, T is the reference primary assembly of the human genome (~3GB) and P is a query pattern between 4 and 150 characters in length.
 In real world scenarios this pattern may be a Feature one wishes to detect, a sequencing read, or the target sequence of a DNA modifying enzyme. The internet abounds with O(m log n) solutions to this problem.
